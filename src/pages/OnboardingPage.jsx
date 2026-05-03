@@ -63,12 +63,9 @@ export default function OnboardingPage() {
 
     setLoading(true);
     try {
-      // For email/password users, phoneNumber is null, so we use a default or prompt
-      const userPhone = user.phoneNumber || '+2348067369016'; // Fallback for admin
-      
       await createStore(user.uid, {
         ...formData,
-        phone: userPhone,
+        phone: '', // Phone is optional, set in Settings page
         theme_color: '#25D366',
         plan: 'basic'
       });
