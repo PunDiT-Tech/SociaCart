@@ -28,6 +28,7 @@ const countries = [
 export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -200,10 +201,13 @@ export default function AuthPage() {
               </div>
 
               {/* Auth Method Selector */}
-              {authMethod === 'email' && !showReset && !isSignUp && (
+              {!showReset && (
                 <div className="mb-6 flex gap-2 p-1 bg-[var(--surface-bg)] rounded-xl">
                   <button
-                    onClick={() => setAuthMethod('email')}
+                    onClick={() => {
+                      setAuthMethod('email');
+                      setPhoneStep('number');
+                    }}
                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
                       authMethod === 'email'
                         ? 'bg-white dark:bg-slate-800 text-[var(--brand-primary)] shadow-sm'
@@ -213,7 +217,10 @@ export default function AuthPage() {
                     <Mail size={16} /> Email
                   </button>
                   <button
-                    onClick={() => setAuthMethod('phone')}
+                    onClick={() => {
+                      setAuthMethod('phone');
+                      setPhoneStep('number');
+                    }}
                     className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
                       authMethod === 'phone'
                         ? 'bg-white dark:bg-slate-800 text-[var(--brand-primary)] shadow-sm'
@@ -289,6 +296,36 @@ export default function AuthPage() {
                           />
                         </div>
 
+                        {isSignUp && (
+                          <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                            <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                              Phone Number
+                            </label>
+                            <div className="flex gap-2">
+                              <select
+                                value={countryCode}
+                                onChange={(e) => setCountryCode(e.target.value)}
+                                className="h-12 rounded-[var(--radius-md)] border-2 border-[var(--border-default)] bg-[var(--surface-card)] px-3 text-sm font-bold outline-none transition-colors focus:border-[var(--brand-primary)] w-32"
+                              >
+                                {countries.map((c) => (
+                                  <option key={c.code} value={c.code}>
+                                    {c.flag} {c.code}
+                                  </option>
+                                ))}
+                              </select>
+                              <Input
+                                placeholder="801 234 5678"
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                required
+                                containerClass="flex-1"
+                                className="h-12"
+                              />
+                            </div>
+                          </div>
+                        )}
+
                         <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
                           <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
                             Password
@@ -328,23 +365,6 @@ export default function AuthPage() {
                         >
                           {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
                         </button>
-
-                        {/* Admin Login Hint */}
-                        {!isSignUp && !showReset && (
-                          <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
-                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest text-center mb-2">
-                              Platform Owner
-                            </p>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center">
-                              <p className="text-xs text-[var(--text-secondary)]">
-                                Admin access: Login with your registered email, then navigate to
-                              </p>
-                              <code className="block mt-1 text-xs font-mono font-bold text-[var(--brand-primary)] bg-white dark:bg-slate-900 px-2 py-1 rounded">
-                                /admin
-                              </code>
-                            </div>
-                          </div>
-                        )}
                       </>
                     )}
                   </motion.form>
