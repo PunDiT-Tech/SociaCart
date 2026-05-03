@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, MessageCircle, ShieldCheck, Sparkles, Smartphone } from 'lucide-react';
+import { CheckCircle2, Mail, ShieldCheck, Sparkles, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { clearRecaptcha, sendOTP } from '../services/authService';
+import { signIn, signUp } from '../services/authService';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -10,77 +10,43 @@ import PageWrapper from '../components/layout/PageWrapper';
 import toast from 'react-hot-toast';
 
 const featureItems = [
-  'Verified phone login',
-  'Fast SMS authentication',
+  'Secure email login',
+  'Fast authentication',
   'Built for WhatsApp selling',
 ];
 
-const countries = [
-  { name: 'Nigeria', code: '+234', flag: 'NG' },
-  { name: 'Ghana', code: '+233', flag: 'GH' },
-  { name: 'Kenya', code: '+254', flag: 'KE' },
-  { name: 'United Kingdom', code: '+44', flag: 'UK' },
-  { name: 'United States', code: '+1', flag: 'US' },
-];
-
 export default function AuthPage() {
-  const [countryCode, setCountryCode] = useState('+234');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [step, setStep] = useState('phone');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState(null);
-  const [fullPhone, setFullPhone] = useState('');
 
   const navigate = useNavigate();
 
-  const formattedPhone = useMemo(() => {
-    const digits = phoneNumber.replace(/\D/g, '');
-    const cleanNumber = digits.startsWith('0') ? digits.slice(1) : digits;
-    return `${countryCode}${cleanNumber}`;
-  }, [countryCode, phoneNumber]);
-
-  const handleSendSms = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!phoneNumber) return toast.error('Enter phone number');
+    if (!email || !password) return toast.error('Enter email and password');
 
     setLoading(true);
     try {
-      const result = await sendOTP(formattedPhone);
-      setConfirmationResult(result);
-      setFullPhone(formattedPhone);
-      setStep('otp');
-      toast.success('SMS code sent');
-    } catch (err) {
-      toast.error(err?.message || 'Failed to send SMS code');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConfirmSms = async (e) => {
-    e.preventDefault();
-    if (!confirmationResult) return toast.error('Request a new SMS code');
-    if (otpCode.trim().length < 6) return toast.error('Enter the 6-digit code');
-
-    setLoading(true);
-    try {
-      await confirmationResult.confirm(otpCode.trim());
-      toast.success('Phone number verified');
+      if (isSignUp) {
+        await signUp(email, password);
+        toast.success('Account created');
+      } else {
+        await signIn(email, password);
+        toast.success('Welcome back');
+      }
       navigate('/');
     } catch (err) {
-      toast.error(err?.message || 'Invalid SMS code');
+      const message = err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password'
+        ? 'Invalid email or password'
+        : err?.code === 'auth/email-already-in-use'
+        ? 'Email already registered'
+        : err?.message || 'Authentication failed';
+      toast.error(message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleChangeNumber = () => {
-    setStep('phone');
-    setOtpCode('');
-    setConfirmationResult(null);
-    setFullPhone('');
-    clearRecaptcha();
   };
 
   return (
@@ -98,11 +64,11 @@ export default function AuthPage() {
 
             <h1 className="max-w-xl font-display text-5xl font-black tracking-tight text-[var(--text-primary)] lg:text-6xl">
               SociaCart
-              <span className="block text-[var(--text-secondary)]">signs you in with a verified phone number.</span>
+              <span className="block text-[var(--text-secondary)]">signs you in with secure email authentication.</span>
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-7 text-[var(--text-secondary)]">
-              Access your store dashboard with a clean SMS login flow designed for fast setup, safer access, and a professional storefront experience.
+              Access your store dashboard with a clean email login flow designed for fast setup, secure access, and a professional storefront experience.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -119,14 +85,14 @@ export default function AuthPage() {
 
             <div className="mt-10 grid max-w-xl grid-cols-3 gap-4">
               <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white/70 p-4 shadow-sm backdrop-blur-md dark:bg-slate-950/70">
-                <Smartphone size={18} className="mb-3 text-[var(--brand-primary)]" />
-                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Phone based</div>
-                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">No extra passwords</div>
+                <Mail size={18} className="mb-3 text-[var(--brand-primary)]" />
+                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Email based</div>
+                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">No phone required</div>
               </div>
               <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white/70 p-4 shadow-sm backdrop-blur-md dark:bg-slate-950/70">
                 <ShieldCheck size={18} className="mb-3 text-[var(--brand-primary)]" />
-                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Verified access</div>
-                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">One-time SMS code</div>
+                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Secure access</div>
+                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">Password protected</div>
               </div>
               <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white/70 p-4 shadow-sm backdrop-blur-md dark:bg-slate-950/70">
                 <Sparkles size={18} className="mb-3 text-[var(--brand-primary)]" />
@@ -148,92 +114,53 @@ export default function AuthPage() {
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">SociaCart</div>
                   <h2 className="font-display text-2xl font-black tracking-tight text-[var(--text-primary)]">
-                    {step === 'phone' ? 'Login with SMS' : 'Enter verification code'}
+                    {isSignUp ? 'Create account' : 'Welcome back'}
                   </h2>
                 </div>
               </div>
 
-              {step === 'phone' ? (
-                <form onSubmit={handleSendSms} className="flex flex-col gap-6">
-                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
-                    <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
-                      Phone Number
-                    </label>
-                    <div className="flex gap-2">
-                      <select
-                        value={countryCode}
-                        onChange={(e) => setCountryCode(e.target.value)}
-                        className="h-12 rounded-[var(--radius-md)] border-2 border-[var(--border-default)] bg-[var(--surface-card)] px-3 text-sm font-bold outline-none transition-colors focus:border-[var(--brand-primary)]"
-                      >
-                        {countries.map((c) => (
-                          <option key={c.code} value={c.code}>
-                            {c.flag} {c.code}
-                          </option>
-                        ))}
-                      </select>
-                      <Input
-                        placeholder="801 234 5678"
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        required
-                        containerClass="flex-1"
-                        className="h-12"
-                      />
-                    </div>
-                    <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
-                      We will send a one-time code to this number.
-                    </p>
-                  </div>
-
-                  <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
-                    <MessageCircle size={20} fill="currentColor" />
-                    Send SMS Code
-                  </Button>
-
-                  <div className="text-center text-xs font-medium text-[var(--text-muted)]">
-                    Your number is formatted as {formattedPhone || `${countryCode}...`}
-                  </div>
-
-                  <div id="recaptcha-container" />
-                </form>
-              ) : (
-                <form onSubmit={handleConfirmSms} className="flex flex-col gap-6">
-                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]">
-                        <ShieldCheck size={22} />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">Code sent</div>
-                        <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{fullPhone}</div>
-                      </div>
-                    </div>
-                    <p className="mt-3 text-xs leading-5 text-[var(--text-muted)]">
-                      Enter the 6-digit verification code from SMS to continue.
-                    </p>
-                  </div>
-
+              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                  <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                    Email Address
+                  </label>
                   <Input
-                    aria-label="SMS verification code"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="123456"
-                    value={otpCode}
-                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    className="text-center text-2xl font-mono font-black tracking-widest"
+                    placeholder="you@example.com"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="h-12"
                   />
+                </div>
 
-                  <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
-                    <ShieldCheck size={20} />
-                    Verify SMS Code
-                  </Button>
+                <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                  <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                    Password
+                  </label>
+                  <Input
+                    placeholder="••••••••"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-12"
+                  />
+                </div>
 
-                  <Button type="button" variant="ghost" onClick={handleChangeNumber} className="text-[10px] font-black uppercase tracking-[0.22em]">
-                    Change Number
-                  </Button>
-                </form>
-              )}
+                <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
+                  <ShieldCheck size={20} />
+                  {isSignUp ? 'Create Account' : 'Sign In'}
+                </Button>
+
+                <button
+                  type="button"
+                  onClick={() => setIsSignUp(!isSignUp)}
+                  className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
+                >
+                  {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                </button>
+              </form>
             </Card>
           </section>
         </div>
