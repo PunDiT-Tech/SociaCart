@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Share2, Search, Trophy, Package, ShoppingCart } from 'lucide-react';
+import { Plus, Share2, Search, Trophy, Package, ShoppingCart, Megaphone } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import useProducts from '../hooks/useProducts';
@@ -16,6 +16,7 @@ import ConfirmDialog from '../components/ui/ConfirmDialog';
 import SkeletonCard from '../components/ui/SkeletonCard';
 import EmptyState from '../components/ui/EmptyState';
 import Button from '../components/ui/Button';
+import Card from '../components/ui/Card';
 import toast from 'react-hot-toast';
 
 export default function DashboardPage() {
@@ -86,7 +87,7 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-4 mb-8">
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className="bg-[var(--surface-card)] p-5 rounded-[var(--radius-lg)] border border-[var(--border-default)] relative overflow-hidden"
@@ -98,7 +99,7 @@ export default function DashboardPage() {
             </div>
           </motion.div>
 
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
@@ -111,6 +112,23 @@ export default function DashboardPage() {
             </div>
           </motion.div>
         </div>
+
+        {/* Advertising Promo */}
+        <Card className="mb-8 p-5 bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-none shadow-lg cursor-pointer hover:shadow-xl transition-shadow" onClick={() => navigate('/advertise')}>
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center shrink-0">
+              <Megaphone size={28} className="text-white" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-display font-black text-lg">Boost Your Sales!</h3>
+              <p className="text-sm text-white/80">Get featured on homepage and reach more customers</p>
+            </div>
+            <div className="text-right">
+              <div className="text-xs font-bold uppercase tracking-widest text-white/70">From</div>
+              <div className="text-2xl font-mono font-black">₦3,000</div>
+            </div>
+          </div>
+        </Card>
 
         {/* Top Product Highlight */}
         {topProduct && topProduct.order_count > 0 && (

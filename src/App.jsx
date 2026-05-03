@@ -18,6 +18,7 @@ const EditProductPage    = lazy(() => import('./pages/EditProductPage'));
 const OrdersPage         = lazy(() => import('./pages/OrdersPage'));
 const SettingsPage       = lazy(() => import('./pages/SettingsPage'));
 const PricingPage        = lazy(() => import('./pages/PricingPage'));
+const AdsPage            = lazy(() => import('./pages/AdsPage'));
 const AdminPage          = lazy(() => import('./pages/AdminPage'));
 const StorePage          = lazy(() => import('./pages/StorePage'));
 const ProductDetailsPage = lazy(() => import('./pages/ProductDetailsPage'));
@@ -43,6 +44,7 @@ const AnimatedRoutes = () => {
         <Route path="/edit-product/:productId" element={<ProtectedRoute><EditProductPage /></ProtectedRoute>} />
         <Route path="/orders" element={<ProtectedRoute><OrdersPage /></ProtectedRoute>} />
         <Route path="/pricing" element={<ProtectedRoute><PricingPage /></ProtectedRoute>} />
+        <Route path="/advertise" element={<ProtectedRoute><AdsPage /></ProtectedRoute>} />
         <Route path="/admin" element={<AdminRoute><AdminPage /></AdminRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
 

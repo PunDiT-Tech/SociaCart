@@ -10,7 +10,7 @@ import Avatar from '../components/ui/Avatar';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { Users, ShoppingBag, TrendingUp, ShieldCheck, Trash2, Crown, MessageCircle, DollarSign, Save, X } from 'lucide-react';
+import { Users, ShoppingBag, TrendingUp, ShieldCheck, Trash2, Crown, MessageCircle, DollarSign, Save, X, Trophy, Megaphone, CheckCircle, Clock, Ban } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminPage() {
@@ -21,10 +21,16 @@ export default function AdminPage() {
   const [planPrices, setPlanPrices] = useState({ pro: 5000, business: 12500 });
   const [editingPrices, setEditingPrices] = useState(false);
   const [tempPrices, setTempPrices] = useState({ pro: 5000, business: 12500 });
+  const [topSellers, setTopSellers] = useState([]);
+  const [topProducts, setTopProducts] = useState([]);
+  const [activeAds, setActiveAds] = useState([]);
+  const [adStats, setAdStats] = useState({ totalAds: 0, activeAds: 0, revenue: 0 });
 
   useEffect(() => {
     fetchData();
     loadPlanPrices();
+    loadAnalytics();
+    loadAds();
 
     // Live listen for verification requests
     const qVer = query(collection(db, "verifications"), orderBy("created_at", "desc"));
@@ -34,6 +40,51 @@ export default function AdminPage() {
 
     return () => unsubVer();
   }, []);
+
+  const loadAnalytics = async () => {
+    try {
+      const usersSnap = await getDocs(collection(db, "users"));
+      const productsSnap = await getDocs(collection(db, "products"));
+      
+      // Calculate top sellers by order count
+      const userData = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const sellersWithOrders = userData
+        .filter(u => u.store_display_name)
+        .sort((a, b) => (b.total_orders || 0) - (a.total_orders || 0))
+        .slice(0, 5);
+      setTopSellers(sellersWithOrders);
+
+      // Calculate top products by order count
+      const productsData = productsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const topProds = productsData
+        .filter(p => p.name && p.order_count > 0)
+        .sort((a, b) => (b.order_count || 0) - (a.order_count || 0))
+        .slice(0, 5);
+      setTopProducts(topProds);
+    } catch (err) {
+      console.error("Failed to load analytics:", err);
+    }
+  };
+
+  const loadAds = async () => {
+    try {
+      const adsSnap = await getDocs(query(collection(db, "ads"), orderBy("created_at", "desc")));
+      const adsData = adsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      setActiveAds(adsData.filter(ad => ad.status === 'active'));
+      
+      const revenue = adsData
+        .filter(ad => ad.payment_status === 'paid')
+        .reduce((sum, ad) => sum + (ad.amount || 0), 0);
+      
+      setAdStats({
+        totalAds: adsData.length,
+        activeAds: adsData.filter(ad => ad.status === 'active').length,
+        revenue
+      });
+    } catch (err) {
+      console.error("Failed to load ads:", err);
+    }
+  };
 
   const loadPlanPrices = async () => {
     try {
@@ -113,6 +164,41 @@ export default function AdminPage() {
     }
   };
 
+  const approveAd = async (adId, adData) => {
+    try {
+      await updateDoc(doc(db, "ads", adId), { 
+        status: 'active',
+        approved_at: new Date().toISOString()
+      });
+      toast.success("Ad approved and activated!");
+      loadAds();
+    } catch (err) {
+      toast.error("Failed to approve ad");
+    }
+  };
+
+  const rejectAd = async (adId) => {
+    try {
+      await updateDoc(doc(db, "ads", adId), { status: 'rejected' });
+      toast.success("Ad rejected");
+      loadAds();
+    } catch (err) {
+      toast.error("Failed to reject ad");
+    }
+  };
+
+  const toggleAdStatus = async (adId, currentStatus) => {
+    try {
+      await updateDoc(doc(db, "ads", adId), { 
+        status: currentStatus === 'active' ? 'paused' : 'active' 
+      });
+      toast.success(`Ad ${currentStatus === 'active' ? 'paused' : 'activated'}`);
+      loadAds();
+    } catch (err) {
+      toast.error("Failed to update ad");
+    }
+  };
+
   const deleteUser = async (userId) => {
     if (!window.confirm("CRITICAL: Delete this store and all products?")) return;
     try {
@@ -131,6 +217,84 @@ export default function AdminPage() {
       <TopBar title="Platform Control" showBack={true} />
       
       <PageWrapper className="flex flex-col gap-8 pb-20">
+        {/* Platform Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <Card className="p-4 text-center border-none bg-white shadow-sm">
+            <Users size={16} className="mx-auto mb-2 text-blue-500" />
+            <div className="text-xl font-black font-mono">{stats.totalUsers}</div>
+            <div className="text-[8px] font-bold uppercase text-[var(--text-muted)]">Users</div>
+          </Card>
+          <Card className="p-4 text-center border-none bg-white shadow-sm">
+            <ShoppingBag size={16} className="mx-auto mb-2 text-green-500" />
+            <div className="text-xl font-black font-mono">{stats.totalProducts}</div>
+            <div className="text-[8px] font-bold uppercase text-[var(--text-muted)]">Items</div>
+          </Card>
+          <Card className="p-4 text-center border-none bg-white shadow-sm">
+            <TrendingUp size={16} className="mx-auto mb-2 text-orange-500" />
+            <div className="text-xl font-black font-mono">{stats.totalOrders}</div>
+            <div className="text-[8px] font-bold uppercase text-[var(--text-muted)]">Orders</div>
+          </Card>
+          <Card className="p-4 text-center border-none bg-white shadow-sm">
+            <DollarSign size={16} className="mx-auto mb-2 text-green-600" />
+            <div className="text-xl font-black font-mono">₦{adStats.revenue.toLocaleString()}</div>
+            <div className="text-[8px] font-bold uppercase text-[var(--text-muted)]">Ad Revenue</div>
+          </Card>
+        </div>
+
+        {/* Top Sellers */}
+        <section>
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <Trophy size={18} className="text-yellow-500" />
+            <h2 className="font-display font-black uppercase text-[10px] tracking-widest text-[var(--text-muted)]">Top 5 Sellers</h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {topSellers.map((seller, index) => (
+              <Card key={seller.id} className="p-3 flex items-center gap-3">
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-sm ${
+                  index === 0 ? 'bg-yellow-100 text-yellow-700' :
+                  index === 1 ? 'bg-gray-100 text-gray-700' :
+                  index === 2 ? 'bg-orange-100 text-orange-700' :
+                  'bg-slate-50 text-slate-600'
+                }`}>
+                  {index + 1}
+                </div>
+                <Avatar name={seller.store_display_name} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm truncate">{seller.store_display_name}</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">{seller.store_category || 'Store'}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-black text-[var(--brand-primary)]">{seller.total_orders || 0} orders</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">{seller.plan || 'basic'}</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+
+        {/* Top Products */}
+        <section>
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <ShoppingBag size={18} className="text-[var(--brand-primary)]" />
+            <h2 className="font-display font-black uppercase text-[10px] tracking-widest text-[var(--text-muted)]">Top 5 Products</h2>
+          </div>
+          <div className="flex flex-col gap-2">
+            {topProducts.map((product, index) => (
+              <Card key={product.id} className="p-3 flex items-center gap-3">
+                <div className="text-[10px] font-black text-[var(--text-muted)] w-4">{index + 1}</div>
+                <img src={product.image_url} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+                <div className="flex-1 min-w-0">
+                  <div className="font-bold text-sm truncate">{product.name}</div>
+                  <div className="text-[10px] text-[var(--text-muted)]">₦{product.price?.toLocaleString()}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-sm font-black text-[var(--brand-primary)]">{product.order_count || 0} sold</div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
+
         {/* Plan Price Management */}
         <section>
           <div className="flex items-center justify-between mb-4 px-1">
@@ -288,6 +452,104 @@ export default function AdminPage() {
             </Card>
           ))}
         </div>
+
+        {/* Ads Management */}
+        <section>
+          <div className="flex items-center gap-2 mb-4 px-1">
+            <Megaphone size={18} className="text-purple-500" />
+            <h2 className="font-display font-black uppercase text-[10px] tracking-widest text-[var(--text-muted)]">Advertisement Management</h2>
+          </div>
+          
+          {/* Ad Stats */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            <Card className="p-3 text-center bg-purple-50 border-purple-100">
+              <Megaphone size={14} className="mx-auto mb-1 text-purple-600" />
+              <div className="text-lg font-black font-mono text-purple-700">{adStats.totalAds}</div>
+              <div className="text-[8px] font-bold uppercase text-purple-600">Total Ads</div>
+            </Card>
+            <Card className="p-3 text-center bg-green-50 border-green-100">
+              <CheckCircle size={14} className="mx-auto mb-1 text-green-600" />
+              <div className="text-lg font-black font-mono text-green-700">{adStats.activeAds}</div>
+              <div className="text-[8px] font-bold uppercase text-green-600">Active</div>
+            </Card>
+            <Card className="p-3 text-center bg-blue-50 border-blue-100">
+              <DollarSign size={14} className="mx-auto mb-1 text-blue-600" />
+              <div className="text-lg font-black font-mono text-blue-700">₦{adStats.revenue.toLocaleString()}</div>
+              <div className="text-[8px] font-bold uppercase text-blue-600">Revenue</div>
+            </Card>
+          </div>
+
+          {/* Pending Ads */}
+          {activeAds.length === 0 && (
+            <Card className="p-6 text-center text-[var(--text-muted)]">
+              <Megaphone size={32} className="mx-auto mb-2 opacity-50" />
+              <p className="text-sm font-bold">No active ads</p>
+            </Card>
+          )}
+
+          <div className="flex flex-col gap-3">
+            {activeAds.map(ad => (
+              <Card key={ad.id} className="p-4 border-l-4 border-l-purple-500">
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-bold text-sm">{ad.store_name || 'Unknown Store'}</h4>
+                      <Badge variant={ad.status === 'active' ? 'success' : ad.status === 'paused' ? 'muted' : 'error'}>
+                        {ad.status}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2">{ad.description}</p>
+                    <div className="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">
+                      <span className="flex items-center gap-1">
+                        <Clock size={12} /> {ad.duration || 0} days
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <DollarSign size={12} /> ₦{ad.amount?.toLocaleString()}
+                      </span>
+                      <span className={ad.payment_status === 'paid' ? 'text-green-600 font-bold' : 'text-orange-600 font-bold'}>
+                        {ad.payment_status === 'paid' ? '✓ Paid' : '⏳ Pending Payment'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {ad.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => approveAd(ad.id, ad)}
+                          className="px-3 py-1.5 bg-green-600 text-white text-[10px] font-black uppercase rounded-lg"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => rejectAd(ad.id)}
+                          className="px-3 py-1.5 bg-red-100 text-red-600 text-[10px] font-black uppercase rounded-lg"
+                        >
+                          Reject
+                        </button>
+                      </>
+                    )}
+                    {ad.status === 'active' && (
+                      <button
+                        onClick={() => toggleAdStatus(ad.id, 'active')}
+                        className="px-3 py-1.5 bg-orange-100 text-orange-600 text-[10px] font-black uppercase rounded-lg"
+                      >
+                        Pause
+                      </button>
+                    )}
+                    {ad.status === 'paused' && (
+                      <button
+                        onClick={() => toggleAdStatus(ad.id, 'paused')}
+                        className="px-3 py-1.5 bg-green-100 text-green-600 text-[10px] font-black uppercase rounded-lg"
+                      >
+                        Activate
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </section>
       </PageWrapper>
     </AppShell>
   );
