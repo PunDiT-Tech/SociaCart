@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 
@@ -15,13 +15,14 @@ export default function useProducts() {
     }
 
     const q = query(
-      collection(db, "products"), 
-      where("user_id", "==", user.uid),
-      orderBy("created_at", "desc")
+      collection(db, "products"),
+      where("user_id", "==", user.uid)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const prods = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort by created_at in memory (newest first)
+      prods.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
       setProducts(prods);
       setLoading(false);
     }, (error) => {
