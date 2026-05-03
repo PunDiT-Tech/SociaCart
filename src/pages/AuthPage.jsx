@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Mail, ShieldCheck, Sparkles, Smartphone, Key } from 'lucide-react';
+import { CheckCircle2, Mail, ShieldCheck, Sparkles, Smartphone, Key, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signIn, signUp, resetPassword } from '../services/authService';
+import { signIn, signUp, resetPassword, sendOTP, confirmOTP, clearRecaptcha } from '../services/authService';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -10,9 +10,19 @@ import PageWrapper from '../components/layout/PageWrapper';
 import toast from 'react-hot-toast';
 
 const featureItems = [
-  'Secure email login',
-  'Fast authentication',
+  'Secure email or phone login',
+  'Fast SMS authentication',
   'Built for WhatsApp selling',
+];
+
+const countries = [
+  { name: 'Nigeria', code: '+234', flag: '🇳🇬' },
+  { name: 'Ghana', code: '+233', flag: '🇬🇭' },
+  { name: 'Kenya', code: '+254', flag: '🇰🇪' },
+  { name: 'South Africa', code: '+27', flag: '🇿🇦' },
+  { name: 'India', code: '+91', flag: '🇮🇳' },
+  { name: 'United Kingdom', code: '+44', flag: '🇬🇧' },
+  { name: 'United States', code: '+1', flag: '🇺🇸' },
 ];
 
 export default function AuthPage() {
@@ -22,9 +32,22 @@ export default function AuthPage() {
   const [showReset, setShowReset] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Phone auth state
+  const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
+  const [countryCode, setCountryCode] = useState('+234');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [confirmationResult, setConfirmationResult] = useState(null);
+  const [phoneStep, setPhoneStep] = useState('number'); // 'number' or 'otp'
+
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const formattedPhone = phoneNumber.replace(/\D/g, '');
+  const fullPhone = `${countryCode}${formattedPhone}`;
+
+  // ============ EMAIL AUTH ============
+
+  const handleEmailAuth = async (e) => {
     e.preventDefault();
     if (!email || (!password && !showReset)) return toast.error('Enter email and password');
 
@@ -58,6 +81,54 @@ export default function AuthPage() {
     }
   };
 
+  // ============ PHONE AUTH ============
+
+  const handleSendOTP = async (e) => {
+    e.preventDefault();
+    if (!formattedPhone || formattedPhone.length < 7) {
+      return toast.error('Enter a valid phone number');
+    }
+
+    setLoading(true);
+    try {
+      const result = await sendOTP(fullPhone);
+      setConfirmationResult(result);
+      setPhoneStep('otp');
+      toast.success('SMS code sent!');
+    } catch (err) {
+      clearRecaptcha();
+      toast.error(err?.message || 'Failed to send SMS code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmOTP = async (e) => {
+    e.preventDefault();
+    if (!confirmationResult) return toast.error('Request a new SMS code');
+    if (otpCode.trim().length < 6) return toast.error('Enter the 6-digit code');
+
+    setLoading(true);
+    try {
+      await confirmOTP(confirmationResult, otpCode.trim());
+      toast.success('Phone number verified');
+      navigate('/');
+    } catch (err) {
+      toast.error(err?.message || 'Invalid SMS code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePhoneBack = () => {
+    setPhoneStep('number');
+    setOtpCode('');
+    setConfirmationResult(null);
+    clearRecaptcha();
+  };
+
+  // ============ RENDER ============
+
   return (
     <PageWrapper className="min-h-screen bg-[var(--surface-bg)]">
       <div className="relative min-h-screen overflow-hidden">
@@ -73,11 +144,11 @@ export default function AuthPage() {
 
             <h1 className="max-w-xl font-display text-5xl font-black tracking-tight text-[var(--text-primary)] lg:text-6xl">
               SociaCart
-              <span className="block text-[var(--text-secondary)]">signs you in with secure email authentication.</span>
+              <span className="block text-[var(--text-secondary)]">signs you in your way.</span>
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-7 text-[var(--text-secondary)]">
-              Access your store dashboard with a clean email login flow designed for fast setup, secure access, and a professional storefront experience.
+              Access your store dashboard with email or phone - whatever works best for you.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
@@ -95,18 +166,18 @@ export default function AuthPage() {
             <div className="mt-10 grid max-w-xl grid-cols-3 gap-4">
               <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white/70 p-4 shadow-sm backdrop-blur-md dark:bg-slate-950/70">
                 <Mail size={18} className="mb-3 text-[var(--brand-primary)]" />
-                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Email based</div>
-                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">No phone required</div>
+                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Email</div>
+                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">Traditional login</div>
+              </div>
+              <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white/70 p-4 shadow-sm backdrop-blur-md dark:bg-slate-950/70">
+                <Smartphone size={18} className="mb-3 text-[var(--brand-primary)]" />
+                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Phone</div>
+                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">SMS verification</div>
               </div>
               <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white/70 p-4 shadow-sm backdrop-blur-md dark:bg-slate-950/70">
                 <ShieldCheck size={18} className="mb-3 text-[var(--brand-primary)]" />
-                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Secure access</div>
-                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">Password protected</div>
-              </div>
-              <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-white/70 p-4 shadow-sm backdrop-blur-md dark:bg-slate-950/70">
-                <Sparkles size={18} className="mb-3 text-[var(--brand-primary)]" />
-                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Brand ready</div>
-                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">SociaCart dashboard</div>
+                <div className="text-xs font-black uppercase tracking-widest text-[var(--text-muted)]">Secure</div>
+                <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">Both protected</div>
               </div>
             </div>
           </section>
@@ -116,127 +187,261 @@ export default function AuthPage() {
               variant="glass"
               className="w-full max-w-md border border-white/60 bg-white/90 p-6 shadow-2xl backdrop-blur-xl dark:bg-slate-950/85 sm:p-8"
             >
-              <div className="mb-8 flex items-center gap-4">
+              <div className="mb-6 flex items-center gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary)] text-white shadow-lg">
-                  {showReset ? <Key size={24} /> : <span className="font-display text-xl font-black tracking-tight">SC</span>}
+                  {showReset ? <Key size={24} /> : phoneStep === 'otp' ? <MessageCircle size={24} /> : <span className="font-display text-xl font-black tracking-tight">SC</span>}
                 </div>
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">SociaCart</div>
                   <h2 className="font-display text-2xl font-black tracking-tight text-[var(--text-primary)]">
-                    {showReset ? 'Reset Password' : isSignUp ? 'Create account' : 'Welcome back'}
+                    {showReset ? 'Reset Password' : phoneStep === 'otp' ? 'Enter SMS Code' : isSignUp ? 'Create account' : 'Welcome back'}
                   </h2>
                 </div>
               </div>
 
-              {showReset ? (
-                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
-                    <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
-                      Email Address
-                    </label>
-                    <Input
-                      placeholder="you@example.com"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="h-12"
-                    />
-                    <p className="mt-3 text-xs text-[var(--text-secondary)]">
-                      Enter the email associated with your account and we'll send you a password reset link.
-                    </p>
-                  </div>
-
-                  <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
-                    <Key size={20} />
-                    Send Reset Link
-                  </Button>
-
+              {/* Auth Method Selector */}
+              {authMethod === 'email' && !showReset && !isSignUp && (
+                <div className="mb-6 flex gap-2 p-1 bg-[var(--surface-bg)] rounded-xl">
                   <button
-                    type="button"
-                    onClick={() => {
-                      setShowReset(false);
-                      setEmail('');
-                    }}
-                    className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
+                    onClick={() => setAuthMethod('email')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                      authMethod === 'email'
+                        ? 'bg-white dark:bg-slate-800 text-[var(--brand-primary)] shadow-sm'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
                   >
-                    ← Back to Login
+                    <Mail size={16} /> Email
                   </button>
-                </form>
-              ) : (
-                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
-                    <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
-                      Email Address
-                    </label>
-                    <Input
-                      placeholder="you@example.com"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="h-12"
-                    />
-                  </div>
-
-                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
-                    <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
-                      Password
-                    </label>
-                    <Input
-                      placeholder="••••••••"
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="h-12"
-                    />
-                  </div>
-
-                  {!isSignUp && (
-                    <button
-                      type="button"
-                      onClick={() => setShowReset(true)}
-                      className="text-right text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)] -mt-2"
-                    >
-                      Forgot Password?
-                    </button>
-                  )}
-
-                  <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
-                    <ShieldCheck size={20} />
-                    {isSignUp ? 'Create Account' : 'Sign In'}
-                  </Button>
-
                   <button
-                    type="button"
-                    onClick={() => {
-                      setIsSignUp(!isSignUp);
-                      setShowReset(false);
-                    }}
-                    className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
+                    onClick={() => setAuthMethod('phone')}
+                    className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${
+                      authMethod === 'phone'
+                        ? 'bg-white dark:bg-slate-800 text-[var(--brand-primary)] shadow-sm'
+                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                    }`}
                   >
-                    {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                    <Smartphone size={16} /> Phone
                   </button>
-
-                  {/* Admin Login Hint */}
-                  {!isSignUp && !showReset && (
-                    <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
-                      <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest text-center mb-2">
-                        Platform Owner
-                      </p>
-                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-[var(--text-secondary)]">
-                          Admin access: Login with your registered email, then navigate to
-                        </p>
-                        <code className="block mt-1 text-xs font-mono font-bold text-[var(--brand-primary)] bg-white dark:bg-slate-900 px-2 py-1 rounded">
-                          /admin
-                        </code>
-                      </div>
-                    </div>
-                  )}
-                </form>
+                </div>
               )}
+
+              <div id="recaptcha-container" />
+
+              <AnimatePresence mode="wait">
+                {/* EMAIL AUTH */}
+                {authMethod === 'email' && (
+                  <motion.form
+                    key="email"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    onSubmit={showReset ? handleEmailAuth : handleEmailAuth}
+                    className="flex flex-col gap-6"
+                  >
+                    {showReset ? (
+                      <>
+                        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                          <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                            Email Address
+                          </label>
+                          <Input
+                            placeholder="you@example.com"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="h-12"
+                          />
+                          <p className="mt-3 text-xs text-[var(--text-secondary)]">
+                            Enter the email associated with your account and we'll send you a password reset link.
+                          </p>
+                        </div>
+
+                        <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
+                          <Key size={20} />
+                          Send Reset Link
+                        </Button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowReset(false);
+                            setEmail('');
+                          }}
+                          className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
+                        >
+                          ← Back to Login
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                          <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                            Email Address
+                          </label>
+                          <Input
+                            placeholder="you@example.com"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                            className="h-12"
+                          />
+                        </div>
+
+                        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                          <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                            Password
+                          </label>
+                          <Input
+                            placeholder="••••••••"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                            className="h-12"
+                          />
+                        </div>
+
+                        {!isSignUp && (
+                          <button
+                            type="button"
+                            onClick={() => setShowReset(true)}
+                            className="text-right text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)] -mt-2"
+                          >
+                            Forgot Password?
+                          </button>
+                        )}
+
+                        <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
+                          <ShieldCheck size={20} />
+                          {isSignUp ? 'Create Account' : 'Sign In'}
+                        </Button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsSignUp(!isSignUp);
+                            setShowReset(false);
+                          }}
+                          className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
+                        >
+                          {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                        </button>
+
+                        {/* Admin Login Hint */}
+                        {!isSignUp && !showReset && (
+                          <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
+                            <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest text-center mb-2">
+                              Platform Owner
+                            </p>
+                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center">
+                              <p className="text-xs text-[var(--text-secondary)]">
+                                Admin access: Login with your registered email, then navigate to
+                              </p>
+                              <code className="block mt-1 text-xs font-mono font-bold text-[var(--brand-primary)] bg-white dark:bg-slate-900 px-2 py-1 rounded">
+                                /admin
+                              </code>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </motion.form>
+                )}
+
+                {/* PHONE AUTH */}
+                {authMethod === 'phone' && (
+                  <motion.form
+                    key="phone"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    onSubmit={phoneStep === 'number' ? handleSendOTP : handleConfirmOTP}
+                    className="flex flex-col gap-6"
+                  >
+                    {phoneStep === 'number' ? (
+                      <>
+                        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                          <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                            Phone Number
+                          </label>
+                          <div className="flex gap-2">
+                            <select
+                              value={countryCode}
+                              onChange={(e) => setCountryCode(e.target.value)}
+                              className="h-12 rounded-[var(--radius-md)] border-2 border-[var(--border-default)] bg-[var(--surface-card)] px-3 text-sm font-bold outline-none transition-colors focus:border-[var(--brand-primary)]"
+                            >
+                              {countries.map((c) => (
+                                <option key={c.code} value={c.code}>
+                                  {c.flag} {c.code}
+                                </option>
+                              ))}
+                            </select>
+                            <Input
+                              placeholder="801 234 5678"
+                              type="tel"
+                              value={phoneNumber}
+                              onChange={(e) => setPhoneNumber(e.target.value)}
+                              required
+                              containerClass="flex-1"
+                              className="h-12"
+                            />
+                          </div>
+                          <p className="mt-3 text-xs text-[var(--text-secondary)]">
+                            We will send a one-time code to this number.
+                          </p>
+                        </div>
+
+                        <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
+                          <MessageCircle size={20} fill="currentColor" />
+                          Send SMS Code
+                        </Button>
+
+                        <div className="text-center text-xs font-medium text-[var(--text-muted)]">
+                          Your number: {fullPhone || `${countryCode}...`}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[var(--brand-primary)]/10 text-[var(--brand-primary)]">
+                              <ShieldCheck size={22} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">Code sent</div>
+                              <div className="truncate text-sm font-semibold text-[var(--text-primary)]">{fullPhone}</div>
+                            </div>
+                          </div>
+                          <p className="mt-3 text-xs text-[var(--text-secondary)]">
+                            Enter the 6-digit verification code from SMS.
+                          </p>
+                        </div>
+
+                        <Input
+                          aria-label="SMS verification code"
+                          inputMode="numeric"
+                          maxLength={6}
+                          placeholder="123456"
+                          value={otpCode}
+                          onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                          className="text-center text-2xl font-mono font-black tracking-widest"
+                        />
+
+                        <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
+                          <ShieldCheck size={20} />
+                          Verify SMS Code
+                        </Button>
+
+                        <Button type="button" variant="ghost" onClick={handlePhoneBack} className="text-[10px] font-black uppercase tracking-[0.22em]">
+                          Change Number
+                        </Button>
+                      </>
+                    )}
+                  </motion.form>
+                )}
+              </AnimatePresence>
             </Card>
           </section>
         </div>

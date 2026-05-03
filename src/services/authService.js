@@ -1,6 +1,15 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
+import { 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  sendPasswordResetEmail,
+  signInWithPhoneNumber,
+  RecaptchaVerifier
+} from "firebase/auth";
 import { auth } from "./firebase";
 import toast from 'react-hot-toast';
+
+// ============ EMAIL/PASSWORD AUTH ============
 
 export const signUp = async (email, password) => {
   try {
@@ -31,6 +40,50 @@ export const resetPassword = async (email) => {
     throw error;
   }
 };
+
+// ============ PHONE AUTH ============
+
+let recaptchaVerifier;
+
+const getRecaptchaVerifier = () => {
+  if (!recaptchaVerifier) {
+    recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+      size: 'invisible',
+      badge: 'bottomright'
+    });
+  }
+  return recaptchaVerifier;
+};
+
+export const sendOTP = async (phoneNumber) => {
+  try {
+    const verifier = getRecaptchaVerifier();
+    const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+    return confirmationResult;
+  } catch (error) {
+    console.error("Error sending OTP:", error);
+    throw error;
+  }
+};
+
+export const confirmOTP = async (confirmationResult, otp) => {
+  try {
+    const result = await confirmationResult.confirm(otp);
+    return result.user;
+  } catch (error) {
+    console.error("Error confirming OTP:", error);
+    throw error;
+  }
+};
+
+export const clearRecaptcha = () => {
+  if (recaptchaVerifier) {
+    recaptchaVerifier.clear();
+    recaptchaVerifier = null;
+  }
+};
+
+// ============ LOGOUT ============
 
 export const logOut = async () => {
   try {
