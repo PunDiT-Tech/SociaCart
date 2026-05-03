@@ -1,12 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { HelmetProvider } from 'react-helmet-async';
-import './i18n'; // Assuming i18n is set up elsewhere
 import './index.css'
 import App from './App.jsx'
-import { initTheme } from './utils/theme'; // Ensure theme is initialized early
+import { initTheme } from './utils/theme'; 
 
-// Initialize theme before render to prevent flash of default theme
+// Initialize theme before render
 initTheme();
 
 createRoot(document.getElementById('root')).render(

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="SociaCart">
+  <rect width="512" height="512" rx="112" fill="#25D366"/>
+  <path d="M141 352V194c0-16 13-29 29-29h24c6-35 33-61 62-61s56 26 62 61h24c16 0 29 13 29 29v158c0 16-13 29-29 29H170c-16 0-29-13-29-29Z" fill="#fff"/>
+  <path d="M219 165c5-19 19-32 37-32s32 13 37 32h-74Z" fill="#25D366"/>
+  <path d="M197 238c13 55 103 55 116 0" fill="none" stroke="#128C7E" stroke-width="28" stroke-linecap="round"/>
+  <path d="M339 366c24-13 40-37 40-65 0-43-37-78-82-78s-82 35-82 78 37 78 82 78c12 0 24-3 34-7l36 13-28-19Z" fill="#128C7E"/>
+  <path d="M263 280c8 27 52 27 60 0" fill="none" stroke="#fff" stroke-width="18" stroke-linecap="round"/>
+</svg>

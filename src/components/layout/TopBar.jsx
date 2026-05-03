@@ -6,7 +6,7 @@ export default function TopBar({ title, showBack = true, actions }) {
 
   return (
     <header className="sticky top-0 z-40 bg-[var(--surface-bg)]/80 backdrop-blur-md px-4 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 min-w-0">
         {showBack && (
           <button 
             onClick={() => navigate(-1)}
@@ -15,9 +15,14 @@ export default function TopBar({ title, showBack = true, actions }) {
             <ChevronLeft size={24} />
           </button>
         )}
-        <h1 className="font-display text-xl font-extrabold tracking-tight text-[var(--text-primary)]">
-          {title}
-        </h1>
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--brand-primary)]">
+            SociaCart
+          </div>
+          <h1 className="truncate font-display text-xl font-extrabold tracking-tight text-[var(--text-primary)]">
+            {title}
+          </h1>
+        </div>
       </div>
       {actions && <div className="flex gap-2">{actions}</div>}
     </header>

@@ -6,7 +6,7 @@ import { auth } from "./firebase";
 import toast from 'react-hot-toast'; // Import toast
 
 export const setupRecaptcha = (containerId) => {
-  if (window.recaptchaVerifier) return; // Avoid re-initializing
+  if (window.recaptchaVerifier) return window.recaptchaVerifier;
   window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
     size: 'invisible',
     callback: () => {
@@ -17,6 +17,7 @@ export const setupRecaptcha = (containerId) => {
       toast.error("reCAPTCHA verification failed. Please try again.");
     }
   });
+  return window.recaptchaVerifier;
 };
 
 export const sendOTP = async (phoneNumber) => {
@@ -30,5 +31,12 @@ export const sendOTP = async (phoneNumber) => {
   } catch (error) {
     console.error("Error sending OTP:", error);
     throw error;
+  }
+};
+
+export const resetRecaptcha = () => {
+  if (window.recaptchaVerifier) {
+    window.recaptchaVerifier.clear();
+    window.recaptchaVerifier = null;
   }
 };

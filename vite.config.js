@@ -7,7 +7,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      includeAssets: ['app-icon.svg'],
       manifest: {
         name: 'WhatsApp Store Builder',
         short_name: 'WA Store',
@@ -18,8 +18,7 @@ export default defineConfig({
         orientation: 'portrait-primary',
         start_url: '/',
         icons: [
-          { src: '/favicon-192.png', sizes: '192x192', type: 'image/png' },
-          { src: '/favicon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
+          { src: '/app-icon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any maskable' },
         ],
         lang: 'en',
       },
