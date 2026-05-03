@@ -58,22 +58,30 @@ export default function StorePage() {
   const handleOrder = async (product) => {
     haptics.medium();
     try {
+      const sellerPhone = store.phone || store.phoneNumber;
+      if (!sellerPhone) {
+        toast.error("Store phone number not found");
+        return;
+      }
+      
       await logOrder({
         product_id: product.id,
         product_name: product.name,
         product_price: product.price,
         product_image: product.image_url,
         seller_id: store.id,
-        seller_phone: store.phone,
+        seller_phone: sellerPhone,
         currency: product.currency || '₦',
         store_name: store.store_name
       });
       await updateDoc(doc(db, "products", product.id), { order_count: increment(1) });
-      window.open(getWAUrl(store.phone, formatWAOrderMessage(product, product.currency || '₦')), '_blank');
+      const message = formatWAOrderMessage(product, product.currency || '₦');
+      const waUrl = getWAUrl(sellerPhone, message);
+      window.open(waUrl, '_blank');
       toast.success("Opening WhatsApp...");
     } catch (err) {
-      console.error(err);
-      toast.error("Something went wrong");
+      console.error("Order error:", err);
+      toast.error("Failed to place order");
     }
   };
 
