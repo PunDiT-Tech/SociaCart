@@ -10,7 +10,7 @@ import Avatar from '../components/ui/Avatar';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-import { Users, ShoppingBag, TrendingUp, ShieldCheck, Trash2, Crown, MessageCircle, DollarSign, Save, X, Trophy, Megaphone, CheckCircle, Clock, Ban } from 'lucide-react';
+import { Users, ShoppingBag, TrendingUp, ShieldCheck, Trash2, Crown, MessageCircle, DollarSign, Save, X, Trophy, Megaphone, CheckCircle, Clock, Ban, Store } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminPage() {
@@ -491,13 +491,34 @@ export default function AdminPage() {
             {activeAds.map(ad => (
               <Card key={ad.id} className="p-4 border-l-4 border-l-purple-500">
                 <div className="flex items-start gap-3">
+                  {ad.product_image && (
+                    <img
+                      src={ad.product_image}
+                      alt={ad.product_name}
+                      className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
+                    />
+                  )}
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-sm">{ad.store_name || 'Unknown Store'}</h4>
+                      <div className="flex items-center gap-1">
+                        {ad.ad_type === 'product' ? (
+                          <ShoppingBag size={14} className="text-purple-500" />
+                        ) : (
+                          <Store size={14} className="text-purple-500" />
+                        )}
+                        <h4 className="font-bold text-sm">
+                          {ad.ad_type === 'product' ? ad.product_name : ad.store_name}
+                        </h4>
+                      </div>
                       <Badge variant={ad.status === 'active' ? 'success' : ad.status === 'paused' ? 'muted' : 'error'}>
                         {ad.status}
                       </Badge>
                     </div>
+                    {ad.ad_type === 'product' && (
+                      <div className="text-[10px] text-[var(--text-muted)] mb-1">
+                        Store: {ad.store_name}
+                      </div>
+                    )}
                     <p className="text-xs text-[var(--text-secondary)] line-clamp-2 mb-2">{ad.description}</p>
                     <div className="flex items-center gap-4 text-[10px] text-[var(--text-muted)]">
                       <span className="flex items-center gap-1">
