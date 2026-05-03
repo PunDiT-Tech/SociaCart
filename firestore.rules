@@ -15,9 +15,10 @@ service cloud.firestore {
       allow update, delete: if request.auth != null && resource.data.user_id == request.auth.uid;
     }
 
-    // Orders - owner read/write
+    // Orders - public create (for customer orders), owner read/write
     match /orders/{orderId} {
-      allow read, write: if request.auth != null && request.auth.uid == resource.data.user_id;
+      allow create: if true;
+      allow read, update, delete: if request.auth != null && request.auth.uid == resource.data.seller_id;
     }
 
     // Stores - public read, owner write

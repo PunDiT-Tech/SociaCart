@@ -59,12 +59,13 @@ export default function StorePage() {
 
   const handleSingleOrder = async (product) => {
     try {
-      const sellerPhone = store.phone || store.phoneNumber || store.whatsapp_number;
+      const sellerPhone = store?.whatsapp_number || store?.phone || store?.phoneNumber;
       if (!sellerPhone) {
-        toast.error("Store phone number not found");
+        toast.error("This store hasn't set up WhatsApp orders yet");
         return;
       }
 
+      // Log the order
       await logOrder({
         product_id: product.id,
         product_name: product.name,
@@ -73,8 +74,11 @@ export default function StorePage() {
         seller_id: store.id,
         seller_phone: sellerPhone,
         currency: product.currency || '₦',
-        store_name: store.store_name
+        store_name: store.store_name,
+        quantity: 1
       });
+      
+      // Update product order count
       await updateDoc(doc(db, "products", product.id), { order_count: increment(1) });
 
       const message = `Hello! I'd like to order *${product.name}* - ${product.currency || '₦'}${product.price}. Please confirm availability!`;
@@ -83,15 +87,15 @@ export default function StorePage() {
       toast.success("Opening WhatsApp...");
     } catch (err) {
       console.error("Order error:", err);
-      toast.error("Failed to place order");
+      toast.error("Failed to place order. Please try again.");
     }
   };
 
   const handleCartCheckout = async () => {
     try {
-      const sellerPhone = store.phone || store.phoneNumber || store.whatsapp_number;
+      const sellerPhone = store?.whatsapp_number || store?.phone || store?.phoneNumber;
       if (!sellerPhone) {
-        toast.error("Store phone number not found");
+        toast.error("This store hasn't set up WhatsApp orders yet");
         setIsCartModalOpen(false);
         return;
       }
@@ -125,7 +129,7 @@ export default function StorePage() {
       toast.success("Opening WhatsApp with your order...");
     } catch (err) {
       console.error("Cart checkout error:", err);
-      toast.error("Failed to process order");
+      toast.error("Failed to process order. Please try again.");
     }
   };
 
