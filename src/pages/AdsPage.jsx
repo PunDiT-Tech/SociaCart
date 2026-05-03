@@ -66,8 +66,12 @@ export default function AdsPage() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.description) {
-      return toast.error("Please enter ad description");
+    // Validation
+    if (!userProfile?.store_display_name) {
+      return toast.error("Please create your store first before advertising");
+    }
+    if (!formData.description || formData.description.length < 10) {
+      return toast.error("Please enter a description (at least 10 characters)");
     }
     if (formData.amount <= 0) {
       return toast.error("Please select a package");
@@ -78,10 +82,10 @@ export default function AdsPage() {
 
     setLoading(true);
     try {
-      await addDoc(collection(db, "ads"), {
+      const adData = {
         user_id: user.uid,
         store_id: user.uid,
-        store_name: formData.store_name,
+        store_name: userProfile.store_display_name,
         ad_type: adType,
         product_id: formData.product_id || null,
         product_name: formData.product_name || null,
@@ -93,13 +97,16 @@ export default function AdsPage() {
         payment_status: 'pending',
         created_at: new Date().toISOString(),
         ends_at: new Date(Date.now() + formData.duration * 24 * 60 * 60 * 1000).toISOString()
-      });
+      };
+
+      console.log("Submitting ad:", adData);
+      await addDoc(collection(db, "ads"), adData);
 
       // Open WhatsApp for payment
       const adminPhone = "2348067369016";
-      const adDetails = adType === 'product' 
-        ? `Product: ${formData.product_name}\nStore: ${formData.store_name}`
-        : `Store: ${formData.store_name}`;
+      const adDetails = adType === 'product'
+        ? `Product: ${formData.product_name}\nStore: ${userProfile.store_display_name}`
+        : `Store: ${userProfile.store_display_name}`;
       
       const message = `Hello! I want to purchase an advertisement.
 
@@ -118,7 +125,8 @@ Please provide payment details to activate my ad. Thank you!`;
       navigate('/');
     } catch (err) {
       console.error("Ad submission error:", err);
-      toast.error("Failed to submit ad. Please try again.");
+      const errorMessage = err.message || "Failed to submit ad";
+      toast.error(`${errorMessage}. Please try again or contact support.`);
     } finally {
       setLoading(false);
     }
@@ -303,12 +311,24 @@ Please provide payment details to activate my ad. Thank you!`;
             Ad Details
           </h3>
           <div className="flex flex-col gap-4">
-            <Input
-              label="Store Name"
-              value={formData.store_name}
-              onChange={(e) => setFormData({ ...formData, store_name: e.target.value })}
-              placeholder="Your store name"
-            />
+            <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+              <label className="mb-1 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                Store Name
+              </label>
+              <div className="text-sm font-bold text-[var(--text-primary)]">
+                {userProfile?.store_display_name || 'No store created yet'}
+              </div>
+              {!userProfile?.store_display_name && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-2"
+                  onClick={() => navigate('/onboarding')}
+                >
+                  Create Your Store
+                </Button>
+              )}
+            </div>
             <Textarea
               label="Ad Description"
               value={formData.description}
@@ -339,6 +359,7 @@ Please provide payment details to activate my ad. Thank you!`;
               className="w-full gap-2"
               onClick={handleSubmit}
               loading={loading}
+              disabled={!userProfile?.store_display_name}
             >
               <Megaphone size={18} />
               Submit Ad for Approval
