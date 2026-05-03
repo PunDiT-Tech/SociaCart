@@ -1,4 +1,4 @@
-import { LogOut, User, Palette, Globe, ShieldAlert, Share2, LayoutGrid } from 'lucide-react';
+import { LogOut, User, Palette, Globe, ShieldAlert, Share2, LayoutGrid, MessageCircle } from 'lucide-react';
 import { auth } from '../services/firebase';
 import { useAuth } from '../context/AuthContext';
 import { updateStore } from '../services/storeService';
@@ -10,7 +10,7 @@ import ThemeToggle from '../components/ui/ThemeToggle';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Textarea from '../components/ui/Textarea';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
@@ -20,8 +20,20 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState({
     store_display_name: userProfile?.store_display_name || '',
     store_description: userProfile?.store_description || '',
-    store_category: userProfile?.store_category || 'Fashion'
+    store_category: userProfile?.store_category || 'Fashion',
+    whatsapp_number: userProfile?.whatsapp_number || user?.phoneNumber || ''
   });
+
+  useEffect(() => {
+    if (userProfile) {
+      setFormData({
+        store_display_name: userProfile.store_display_name || '',
+        store_description: userProfile.store_description || '',
+        store_category: userProfile.store_category || 'Fashion',
+        whatsapp_number: userProfile.whatsapp_number || user?.phoneNumber || ''
+      });
+    }
+  }, [userProfile, user?.phoneNumber]);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
@@ -82,16 +94,24 @@ export default function SettingsPage() {
           </div>
           <Card className="p-6">
             <form onSubmit={handleUpdate} className="flex flex-col gap-6">
-              <Input 
+              <Input
                 label="Store Name"
                 value={formData.store_display_name}
                 onChange={e => setFormData({ ...formData, store_display_name: e.target.value })}
               />
-              <Textarea 
+              <Textarea
                 label="Description"
                 value={formData.store_description}
                 onChange={e => setFormData({ ...formData, store_description: e.target.value })}
                 maxChars={160}
+              />
+              <Input
+                label="WhatsApp Number"
+                type="tel"
+                placeholder="+2348012345678"
+                value={formData.whatsapp_number}
+                onChange={e => setFormData({ ...formData, whatsapp_number: e.target.value })}
+                help="Customers will order via this number"
               />
               <Button loading={loading} type="submit">Save Changes</Button>
             </form>

@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AnimatePresence } from 'framer-motion';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AdminRoute from './components/auth/AdminRoute';
 import LoadingSpinner from './components/ui/LoadingSpinner';
@@ -56,13 +57,15 @@ const AnimatedRoutes = () => {
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <SplashScreen />
-        <Suspense fallback={<LoadingSpinner fullScreen />}>
-          <AnimatedRoutes />
-        </Suspense>
-        <Toaster position="top-center" reverseOrder={false} />
-      </Router>
+      <CartProvider>
+        <Router>
+          <SplashScreen />
+          <Suspense fallback={<LoadingSpinner fullScreen />}>
+            <AnimatedRoutes />
+          </Suspense>
+          <Toaster position="top-center" reverseOrder={false} />
+        </Router>
+      </CartProvider>
     </AuthProvider>
   );
 }

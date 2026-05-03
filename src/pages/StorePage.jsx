@@ -3,17 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { collection, query, where, getDocs, doc, updateDoc, increment } from 'firebase/firestore';
 import { db } from '../services/firebase';
 import { getStoreBySlug } from '../services/storeService';
-import { formatWAOrderMessage, getWAUrl } from '../utils/whatsapp';
+import { formatCartMessage, getWAUrl } from '../utils/whatsapp';
 import { logOrder } from '../services/orderService';
 import { Helmet } from 'react-helmet-async';
-import { ShoppingBag, Share2, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import StoreBanner from '../components/store/StoreBanner';
 import PublicProductCard from '../components/store/PublicProductCard';
 import StoreQRCode from '../components/store/StoreQRCode';
+import FloatingCartButton from '../components/store/FloatingCartButton';
+import CartModal from '../components/store/CartModal';
 import Modal from '../components/ui/Modal';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import PageWrapper from '../components/layout/PageWrapper';
-import useHaptics from '../hooks/useHaptics';
+import { useCart } from '../context/CartContext';
 import toast from 'react-hot-toast';
 
 export default function StorePage() {
@@ -23,9 +24,10 @@ export default function StorePage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  
+  const [isCartModalOpen, setIsCartModalOpen] = useState(false);
+
   const navigate = useNavigate();
-  const haptics = useHaptics();
+  const { cartItems, clearCart } = useCart();
 
   useEffect(() => {
     const fetchStoreAndProducts = async () => {
@@ -55,15 +57,14 @@ export default function StorePage() {
     fetchStoreAndProducts();
   }, [storeSlug, navigate]);
 
-  const handleOrder = async (product) => {
-    haptics.medium();
+  const handleSingleOrder = async (product) => {
     try {
-      const sellerPhone = store.phone || store.phoneNumber;
+      const sellerPhone = store.phone || store.phoneNumber || store.whatsapp_number;
       if (!sellerPhone) {
         toast.error("Store phone number not found");
         return;
       }
-      
+
       await logOrder({
         product_id: product.id,
         product_name: product.name,
@@ -75,7 +76,8 @@ export default function StorePage() {
         store_name: store.store_name
       });
       await updateDoc(doc(db, "products", product.id), { order_count: increment(1) });
-      const message = formatWAOrderMessage(product, product.currency || '₦');
+
+      const message = `Hello! I'd like to order *${product.name}* - ${product.currency || '₦'}${product.price}. Please confirm availability!`;
       const waUrl = getWAUrl(sellerPhone, message);
       window.open(waUrl, '_blank');
       toast.success("Opening WhatsApp...");
@@ -85,8 +87,50 @@ export default function StorePage() {
     }
   };
 
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleCartCheckout = async () => {
+    try {
+      const sellerPhone = store.phone || store.phoneNumber || store.whatsapp_number;
+      if (!sellerPhone) {
+        toast.error("Store phone number not found");
+        setIsCartModalOpen(false);
+        return;
+      }
+
+      // Log orders for each item
+      for (const item of cartItems) {
+        await logOrder({
+          product_id: item.id,
+          product_name: item.name,
+          product_price: item.price,
+          product_image: item.image_url,
+          seller_id: store.id,
+          seller_phone: sellerPhone,
+          currency: item.currency || '₦',
+          store_name: store.store_name,
+          quantity: item.quantity
+        });
+        await updateDoc(doc(db, "products", item.id), { 
+          order_count: increment(item.quantity) 
+        });
+      }
+
+      // Generate WhatsApp message with all items
+      const message = formatCartMessage(cartItems, cartItems[0]?.currency || '₦', store.store_display_name);
+      const waUrl = getWAUrl(sellerPhone, message);
+      
+      // Clear cart and open WhatsApp
+      clearCart();
+      setIsCartModalOpen(false);
+      window.open(waUrl, '_blank');
+      toast.success("Opening WhatsApp with your order...");
+    } catch (err) {
+      console.error("Cart checkout error:", err);
+      toast.error("Failed to process order");
+    }
+  };
+
+  const filteredProducts = products.filter(p =>
+    p.name?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   if (loading) return <LoadingSpinner fullScreen />;
@@ -98,9 +142,9 @@ export default function StorePage() {
       </Helmet>
 
       <div className="w-full max-w-lg bg-white dark:bg-slate-900 min-h-screen shadow-2xl relative flex flex-col border-x border-[var(--border-default)]">
-        <StoreBanner 
-          store={store} 
-          productCount={products.length} 
+        <StoreBanner
+          store={store}
+          productCount={products.length}
           onShare={() => setIsShareModalOpen(true)}
         />
 
@@ -108,7 +152,7 @@ export default function StorePage() {
           <div className="sticky top-4 z-30 mb-8">
             <div className="relative group">
               <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={20} />
-              <input 
+              <input
                 type="text"
                 placeholder="Search catalog..."
                 className="w-full bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-[var(--border-default)] rounded-full py-4 pl-14 pr-6 text-sm font-black outline-none focus:border-[var(--brand-primary)]"
@@ -120,7 +164,7 @@ export default function StorePage() {
 
           <div className="grid grid-cols-1 gap-6">
             {filteredProducts.map(product => (
-              <PublicProductCard key={product.id} product={product} onOrder={handleOrder} />
+              <PublicProductCard key={product.id} product={product} onOrder={handleSingleOrder} />
             ))}
           </div>
 
@@ -128,11 +172,23 @@ export default function StorePage() {
             <div className="text-center py-32 text-[var(--text-muted)]">No products found</div>
           )}
         </div>
+
+        {/* Floating Cart Button */}
+        <FloatingCartButton onClick={() => setIsCartModalOpen(true)} />
       </div>
 
+      {/* Share Modal */}
       <Modal isOpen={isShareModalOpen} onClose={() => setIsShareModalOpen(false)} title="Store QR Code">
         <StoreQRCode storeSlug={store.store_name} storeName={store.store_display_name} />
       </Modal>
+
+      {/* Cart Modal */}
+      <CartModal
+        isOpen={isCartModalOpen}
+        onClose={() => setIsCartModalOpen(false)}
+        onCheckout={handleCartCheckout}
+        storeName={store.store_display_name}
+      />
     </div>
   );
 }
