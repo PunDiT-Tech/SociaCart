@@ -18,14 +18,14 @@ export default function ProductCard({ product, onEdit, onDelete, onToggleAvailab
             <Badge variant="muted" className="bg-white/90 text-black border-none">Out of Stock</Badge>
           </div>
         )}
-        <div className="absolute top-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button 
+        <div className="absolute top-2 right-2 flex gap-1.5">
+          <button
             onClick={() => onEdit(product)}
             className="w-8 h-8 flex items-center justify-center bg-white/90 text-[var(--text-primary)] rounded-full shadow-lg backdrop-blur-md"
           >
             <Edit2 size={14} />
           </button>
-          <button 
+          <button
             onClick={() => onDelete(product)}
             className="w-8 h-8 flex items-center justify-center bg-red-500/90 text-white rounded-full shadow-lg backdrop-blur-md"
           >
