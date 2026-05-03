@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2, MessageCircle, ShieldCheck, Sparkles, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { resetRecaptcha, sendOTP, setupRecaptcha } from '../services/authService';
+import { sendOTP } from '../services/authService';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -46,14 +46,12 @@ export default function AuthPage() {
 
     setLoading(true);
     try {
-      setupRecaptcha('recaptcha-container');
       const result = await sendOTP(formattedPhone);
       setConfirmationResult(result);
       setFullPhone(formattedPhone);
       setStep('otp');
       toast.success('SMS code sent');
     } catch (err) {
-      resetRecaptcha();
       toast.error(err?.message || 'Failed to send SMS code');
     } finally {
       setLoading(false);
@@ -82,7 +80,6 @@ export default function AuthPage() {
     setOtpCode('');
     setConfirmationResult(null);
     setFullPhone('');
-    resetRecaptcha();
   };
 
   return (
@@ -196,8 +193,6 @@ export default function AuthPage() {
                   <div className="text-center text-xs font-medium text-[var(--text-muted)]">
                     Your number is formatted as {formattedPhone || `${countryCode}...`}
                   </div>
-
-                  <div id="recaptcha-container" />
                 </form>
               ) : (
                 <form onSubmit={handleConfirmSms} className="flex flex-col gap-6">
