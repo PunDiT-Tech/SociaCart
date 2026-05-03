@@ -43,7 +43,8 @@ export const AuthProvider = ({ children }) => {
     loading: loading || !authInitialized,
     isAuthenticated: !!user,
     hasStore: !!userProfile,
-    isAdmin: user?.phoneNumber === '+2348067369016'
+    // Check both Firebase Auth phone and stored profile phone
+    isAdmin: user?.phoneNumber === '+2348067369016' || userProfile?.phone === '+2348067369016'
   };
 
   return (

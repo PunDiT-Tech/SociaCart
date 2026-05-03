@@ -60,12 +60,15 @@ export default function OnboardingPage() {
 
   const handleSubmit = async () => {
     if (slugStatus !== 'available') return toast.error("Please choose a unique store name");
-    
+
     setLoading(true);
     try {
+      // For email/password users, phoneNumber is null, so we use a default or prompt
+      const userPhone = user.phoneNumber || '+2348067369016'; // Fallback for admin
+      
       await createStore(user.uid, {
         ...formData,
-        phone: user.phoneNumber,
+        phone: userPhone,
         theme_color: '#25D366',
         plan: 'basic'
       });

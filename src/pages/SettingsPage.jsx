@@ -39,7 +39,10 @@ export default function SettingsPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await updateStore(user.uid, formData);
+      await updateStore(user.uid, {
+        ...formData,
+        phone: formData.whatsapp_number // Also save as phone for admin check
+      });
       toast.success("Settings saved!");
     } catch (err) {
       toast.error("Failed to update settings");
