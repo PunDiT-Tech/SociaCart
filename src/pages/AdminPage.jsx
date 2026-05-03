@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../services/firebase';
-import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, orderBy, onSnapshot, setDoc } from 'firebase/firestore';
 import AppShell from '../components/layout/AppShell';
 import TopBar from '../components/layout/TopBar';
 import PageWrapper from '../components/layout/PageWrapper';
@@ -8,7 +8,9 @@ import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Avatar from '../components/ui/Avatar';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { Users, ShoppingBag, TrendingUp, ShieldCheck, Trash2, Crown, MessageCircle } from 'lucide-react';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import { Users, ShoppingBag, TrendingUp, ShieldCheck, Trash2, Crown, MessageCircle, DollarSign, Save, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminPage() {
@@ -16,10 +18,14 @@ export default function AdminPage() {
   const [pendingVerifications, setPendingVerifications] = useState([]);
   const [stats, setStats] = useState({ totalUsers: 0, totalProducts: 0, totalOrders: 0 });
   const [loading, setLoading] = useState(true);
+  const [planPrices, setPlanPrices] = useState({ pro: 5000, business: 12500 });
+  const [editingPrices, setEditingPrices] = useState(false);
+  const [tempPrices, setTempPrices] = useState({ pro: 5000, business: 12500 });
 
   useEffect(() => {
     fetchData();
-    
+    loadPlanPrices();
+
     // Live listen for verification requests
     const qVer = query(collection(db, "verifications"), orderBy("created_at", "desc"));
     const unsubVer = onSnapshot(qVer, (snap) => {
@@ -28,6 +34,33 @@ export default function AdminPage() {
 
     return () => unsubVer();
   }, []);
+
+  const loadPlanPrices = async () => {
+    try {
+      const pricesDoc = await getDocs(query(collection(db, "settings"), orderBy("created_at", "desc")));
+      if (!pricesDoc.empty) {
+        const data = pricesDoc.docs[0].data();
+        setPlanPrices({ pro: data.proPrice || 5000, business: data.businessPrice || 12500 });
+      }
+    } catch (err) {
+      console.error("Failed to load plan prices:", err);
+    }
+  };
+
+  const savePlanPrices = async () => {
+    try {
+      await setDoc(doc(db, "settings", "plan_prices"), {
+        proPrice: tempPrices.pro,
+        businessPrice: tempPrices.business,
+        updated_at: new Date().toISOString()
+      });
+      setPlanPrices(tempPrices);
+      setEditingPrices(false);
+      toast.success("Plan prices updated!");
+    } catch (err) {
+      toast.error("Failed to save prices");
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -98,6 +131,82 @@ export default function AdminPage() {
       <TopBar title="Platform Control" showBack={true} />
       
       <PageWrapper className="flex flex-col gap-8 pb-20">
+        {/* Plan Price Management */}
+        <section>
+          <div className="flex items-center justify-between mb-4 px-1">
+            <div className="flex items-center gap-2">
+              <DollarSign size={18} className="text-green-500" />
+              <h2 className="font-display font-black uppercase text-[10px] tracking-widest text-[var(--text-muted)]">Plan Pricing</h2>
+            </div>
+            {!editingPrices ? (
+              <button
+                onClick={() => {
+                  setTempPrices(planPrices);
+                  setEditingPrices(true);
+                }}
+                className="text-xs font-bold text-[var(--brand-primary)] flex items-center gap-1"
+              >
+                <Save size={14} /> Edit Prices
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setEditingPrices(false);
+                    setTempPrices(planPrices);
+                  }}
+                  className="text-xs font-bold text-red-500 flex items-center gap-1"
+                >
+                  <X size={14} /> Cancel
+                </button>
+                <button
+                  onClick={savePlanPrices}
+                  className="text-xs font-bold text-green-600 flex items-center gap-1"
+                >
+                  <Save size={14} /> Save
+                </button>
+              </div>
+            )}
+          </div>
+          <Card className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border-green-100">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
+                  Pro Plan (₦/month)
+                </label>
+                {editingPrices ? (
+                  <input
+                    type="number"
+                    value={tempPrices.pro}
+                    onChange={(e) => setTempPrices({ ...tempPrices, pro: parseInt(e.target.value) || 0 })}
+                    className="w-full h-12 rounded-lg border-2 border-[var(--border-default)] bg-white px-3 text-lg font-mono font-bold outline-none focus:border-green-500"
+                  />
+                ) : (
+                  <div className="text-2xl font-mono font-black text-green-700">₦{planPrices.pro.toLocaleString()}</div>
+                )}
+              </div>
+              <div>
+                <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
+                  Business Plan (₦/month)
+                </label>
+                {editingPrices ? (
+                  <input
+                    type="number"
+                    value={tempPrices.business}
+                    onChange={(e) => setTempPrices({ ...tempPrices, business: parseInt(e.target.value) || 0 })}
+                    className="w-full h-12 rounded-lg border-2 border-[var(--border-default)] bg-white px-3 text-lg font-mono font-bold outline-none focus:border-green-500"
+                  />
+                ) : (
+                  <div className="text-2xl font-mono font-black text-green-700">₦{planPrices.business.toLocaleString()}</div>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-[var(--text-muted)] mt-3">
+              💡 These prices are shown on the Pricing page. Users will see updated prices immediately.
+            </p>
+          </Card>
+        </section>
+
         {/* Verification Requests */}
         {pendingVerifications.length > 0 && (
           <section className="animate-pulse">

@@ -13,6 +13,30 @@ export default function PricingPage() {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [duration, setDuration] = useState(1);
   const [quantity, setQuantity] = useState(1);
+  const [planPrices, setPlanPrices] = useState({ pro: 5000, business: 12500 });
+  const [loadingPrices, setLoadingPrices] = useState(true);
+
+  useEffect(() => {
+    const loadPrices = async () => {
+      try {
+        const { getDocs, query, collection, orderBy } = await import('firebase/firestore');
+        const { db } = await import('../services/firebase');
+        const pricesSnap = await getDocs(query(collection(db, "settings"), orderBy("created_at", "desc")));
+        if (!pricesSnap.empty) {
+          const data = pricesSnap.docs[0].data();
+          setPlanPrices({
+            pro: data.proPrice || 5000,
+            business: data.businessPrice || 12500
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load prices:", err);
+      } finally {
+        setLoadingPrices(false);
+      }
+    };
+    loadPrices();
+  }, []);
 
   const durationOptions = [
     { months: 1, discount: 0, label: '1 Month' },
@@ -39,7 +63,7 @@ export default function PricingPage() {
     {
       id: 'pro',
       name: 'Pro',
-      price: 5000,
+      price: loadingPrices ? 5000 : planPrices.pro,
       recommended: true,
       icon: <Crown size={24} className="text-[var(--brand-gold)]" />,
       features: [
@@ -54,7 +78,7 @@ export default function PricingPage() {
     {
       id: 'business',
       name: 'Business',
-      price: 12500,
+      price: loadingPrices ? 12500 : planPrices.business,
       icon: <Rocket size={24} className="text-blue-500" />,
       features: [
         'Everything in Pro',
