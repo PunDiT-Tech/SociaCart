@@ -65,29 +65,35 @@ export default function StorePage() {
         return;
       }
 
-      // Log the order
-      await logOrder({
-        product_id: product.id,
-        product_name: product.name,
-        product_price: product.price,
-        product_image: product.image_url,
-        seller_id: store.id,
-        seller_phone: sellerPhone,
-        currency: product.currency || '₦',
-        store_name: store.store_name,
-        quantity: 1
-      });
-      
-      // Update product order count
-      await updateDoc(doc(db, "products", product.id), { order_count: increment(1) });
+      // Try to log the order (will work once rules are deployed)
+      try {
+        await logOrder({
+          product_id: product.id,
+          product_name: product.name,
+          product_price: product.price,
+          product_image: product.image_url,
+          seller_id: store.id,
+          seller_phone: sellerPhone,
+          currency: product.currency || '₦',
+          store_name: store.store_name,
+          quantity: 1
+        });
+      } catch (logErr) {
+        console.warn("Order logging failed (rules may need deployment):", logErr.message);
+        // Continue anyway - WhatsApp will still open
+      }
 
       const message = `Hello! I'd like to order *${product.name}* - ${product.currency || '₦'}${product.price}. Please confirm availability!`;
       const waUrl = getWAUrl(sellerPhone, message);
       window.open(waUrl, '_blank');
-      toast.success("Opening WhatsApp...");
     } catch (err) {
       console.error("Order error:", err);
-      toast.error("Failed to place order. Please try again.");
+      // Still try to open WhatsApp even if logging fails
+      const sellerPhone = store?.whatsapp_number || store?.phone || store?.phoneNumber;
+      if (sellerPhone) {
+        const message = `Hello! I'd like to order *${product.name}* - ${product.currency || '₦'}${product.price}. Please confirm availability!`;
+        window.open(getWAUrl(sellerPhone, message), '_blank');
+      }
     }
   };
 
@@ -100,36 +106,44 @@ export default function StorePage() {
         return;
       }
 
-      // Log orders for each item
-      for (const item of cartItems) {
-        await logOrder({
-          product_id: item.id,
-          product_name: item.name,
-          product_price: item.price,
-          product_image: item.image_url,
-          seller_id: store.id,
-          seller_phone: sellerPhone,
-          currency: item.currency || '₦',
-          store_name: store.store_name,
-          quantity: item.quantity
-        });
-        await updateDoc(doc(db, "products", item.id), { 
-          order_count: increment(item.quantity) 
-        });
+      // Try to log orders (will work once rules are deployed)
+      try {
+        for (const item of cartItems) {
+          await logOrder({
+            product_id: item.id,
+            product_name: item.name,
+            product_price: item.price,
+            product_image: item.image_url,
+            seller_id: store.id,
+            seller_phone: sellerPhone,
+            currency: item.currency || '₦',
+            store_name: store.store_name,
+            quantity: item.quantity
+          });
+        }
+      } catch (logErr) {
+        console.warn("Order logging failed (rules may need deployment):", logErr.message);
+        // Continue anyway - WhatsApp will still open
       }
 
       // Generate WhatsApp message with all items
       const message = formatCartMessage(cartItems, cartItems[0]?.currency || '₦', store.store_display_name);
       const waUrl = getWAUrl(sellerPhone, message);
-      
+
       // Clear cart and open WhatsApp
       clearCart();
       setIsCartModalOpen(false);
       window.open(waUrl, '_blank');
-      toast.success("Opening WhatsApp with your order...");
     } catch (err) {
       console.error("Cart checkout error:", err);
-      toast.error("Failed to process order. Please try again.");
+      // Fallback: just open WhatsApp with the message
+      const sellerPhone = store?.whatsapp_number || store?.phone || store?.phoneNumber;
+      if (sellerPhone) {
+        const message = formatCartMessage(cartItems, cartItems[0]?.currency || '₦', store.store_display_name);
+        clearCart();
+        setIsCartModalOpen(false);
+        window.open(getWAUrl(sellerPhone, message), '_blank');
+      }
     }
   };
 
