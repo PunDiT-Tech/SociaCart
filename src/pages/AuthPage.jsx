@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CheckCircle2, Mail, ShieldCheck, Sparkles, Smartphone } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { signIn, signUp } from '../services/authService';
+import { CheckCircle2, Mail, ShieldCheck, Sparkles, Smartphone, Key } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { signIn, signUp, resetPassword } from '../services/authService';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
 import Card from '../components/ui/Card';
@@ -19,29 +19,38 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
+  const [showReset, setShowReset] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email || !password) return toast.error('Enter email and password');
+    if (!email || (!password && !showReset)) return toast.error('Enter email and password');
 
     setLoading(true);
     try {
-      if (isSignUp) {
+      if (showReset) {
+        await resetPassword(email);
+        toast.success('Password reset email sent! Check your inbox.');
+        setShowReset(false);
+        setEmail('');
+      } else if (isSignUp) {
         await signUp(email, password);
         toast.success('Account created');
+        navigate('/');
       } else {
         await signIn(email, password);
         toast.success('Welcome back');
+        navigate('/');
       }
-      navigate('/');
     } catch (err) {
       const message = err?.code === 'auth/user-not-found' || err?.code === 'auth/wrong-password'
         ? 'Invalid email or password'
         : err?.code === 'auth/email-already-in-use'
         ? 'Email already registered'
+        : err?.code === 'auth/too-many-requests'
+        ? 'Too many attempts. Try again later.'
         : err?.message || 'Authentication failed';
       toast.error(message);
     } finally {
@@ -109,58 +118,125 @@ export default function AuthPage() {
             >
               <div className="mb-8 flex items-center gap-4">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[var(--brand-primary)] text-white shadow-lg">
-                  <span className="font-display text-xl font-black tracking-tight">SC</span>
+                  {showReset ? <Key size={24} /> : <span className="font-display text-xl font-black tracking-tight">SC</span>}
                 </div>
                 <div className="min-w-0">
                   <div className="text-[10px] font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">SociaCart</div>
                   <h2 className="font-display text-2xl font-black tracking-tight text-[var(--text-primary)]">
-                    {isSignUp ? 'Create account' : 'Welcome back'}
+                    {showReset ? 'Reset Password' : isSignUp ? 'Create account' : 'Welcome back'}
                   </h2>
                 </div>
               </div>
 
-              <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-                <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
-                  <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
-                    Email Address
-                  </label>
-                  <Input
-                    placeholder="you@example.com"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="h-12"
-                  />
-                </div>
+              {showReset ? (
+                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                    <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                      Email Address
+                    </label>
+                    <Input
+                      placeholder="you@example.com"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="h-12"
+                    />
+                    <p className="mt-3 text-xs text-[var(--text-secondary)]">
+                      Enter the email associated with your account and we'll send you a password reset link.
+                    </p>
+                  </div>
 
-                <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
-                  <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
-                    Password
-                  </label>
-                  <Input
-                    placeholder="••••••••"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    className="h-12"
-                  />
-                </div>
+                  <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
+                    <Key size={20} />
+                    Send Reset Link
+                  </Button>
 
-                <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
-                  <ShieldCheck size={20} />
-                  {isSignUp ? 'Create Account' : 'Sign In'}
-                </Button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowReset(false);
+                      setEmail('');
+                    }}
+                    className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
+                  >
+                    ← Back to Login
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                    <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                      Email Address
+                    </label>
+                    <Input
+                      placeholder="you@example.com"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="h-12"
+                    />
+                  </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsSignUp(!isSignUp)}
-                  className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
-                >
-                  {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-                </button>
-              </form>
+                  <div className="rounded-[var(--radius-lg)] border border-[var(--border-default)] bg-[var(--surface-bg)]/70 p-4">
+                    <label className="mb-3 block text-xs font-black uppercase tracking-[0.24em] text-[var(--text-muted)]">
+                      Password
+                    </label>
+                    <Input
+                      placeholder="••••••••"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="h-12"
+                    />
+                  </div>
+
+                  {!isSignUp && (
+                    <button
+                      type="button"
+                      onClick={() => setShowReset(true)}
+                      className="text-right text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)] -mt-2"
+                    >
+                      Forgot Password?
+                    </button>
+                  )}
+
+                  <Button type="submit" size="lg" className="w-full gap-3 py-4" loading={loading}>
+                    <ShieldCheck size={20} />
+                    {isSignUp ? 'Create Account' : 'Sign In'}
+                  </Button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setShowReset(false);
+                    }}
+                    className="text-center text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)]"
+                  >
+                    {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+                  </button>
+
+                  {/* Admin Login Hint */}
+                  {!isSignUp && !showReset && (
+                    <div className="mt-4 pt-4 border-t border-[var(--border-default)]">
+                      <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest text-center mb-2">
+                        Platform Owner
+                      </p>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 text-center">
+                        <p className="text-xs text-[var(--text-secondary)]">
+                          Admin access: Login with your registered email, then navigate to
+                        </p>
+                        <code className="block mt-1 text-xs font-mono font-bold text-[var(--brand-primary)] bg-white dark:bg-slate-900 px-2 py-1 rounded">
+                          /admin
+                        </code>
+                      </div>
+                    </div>
+                  )}
+                </form>
+              )}
             </Card>
           </section>
         </div>

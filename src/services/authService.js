@@ -1,5 +1,6 @@
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "./firebase";
+import toast from 'react-hot-toast';
 
 export const signUp = async (email, password) => {
   try {
@@ -17,6 +18,16 @@ export const signIn = async (email, password) => {
     return userCredential.user;
   } catch (error) {
     console.error("Error signing in:", error);
+    throw error;
+  }
+};
+
+export const resetPassword = async (email) => {
+  try {
+    await sendPasswordResetEmail(auth, email);
+    return true;
+  } catch (error) {
+    console.error("Error sending reset email:", error);
     throw error;
   }
 };
